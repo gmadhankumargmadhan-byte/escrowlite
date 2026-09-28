@@ -1,15 +1,213 @@
-﻿{
+{
   "info": {
-    "name": "EscrowLite API",
+    "name": "EscrowLite Full API Collection",
+    "description": "Complete Postman Collection for EscrowLite Spring Boot REST APIs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api" },
+    { "key": "clientId", "value": "1" },
+    { "key": "freelancerId", "value": "1" },
+    { "key": "projectId", "value": "1" },
+    { "key": "milestoneId", "value": "1" }
+  ],
   "item": [
     {
-      "name": "Health",
+      "name": "Health Check",
       "request": {
         "method": "GET",
-        "url": { "raw": "http://localhost:8080/api/health", "host": ["localhost"], "port": "8080", "path": ["api", "health"] }
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
       }
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Create Client",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Corp\",\n  \"email\": \"client@acme.com\",\n  \"phone\": \"+1-555-0199\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/clients", "host": ["{{baseUrl}}"], "path": ["clients"] }
+          }
+        },
+        {
+          "name": "Get All Clients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clients", "host": ["{{baseUrl}}"], "path": ["clients"] }
+          }
+        },
+        {
+          "name": "Get Client By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["clients", "{{clientId}}"] }
+          }
+        },
+        {
+          "name": "Update Client",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Global Corp\",\n  \"email\": \"contact@acmeglobal.com\",\n  \"phone\": \"+1-555-0200\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["clients", "{{clientId}}"] }
+          }
+        },
+        {
+          "name": "Delete Client",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/clients/{{clientId}}", "host": ["{{baseUrl}}"], "path": ["clients", "{{clientId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Freelancers",
+      "item": [
+        {
+          "name": "Create Freelancer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane.freelancer@dev.com\",\n  \"skills\": \"Java, React, Spring Boot\",\n  \"hourlyRate\": 85.00\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/freelancers", "host": ["{{baseUrl}}"], "path": ["freelancers"] }
+          }
+        },
+        {
+          "name": "Get All Freelancers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/freelancers", "host": ["{{baseUrl}}"], "path": ["freelancers"] }
+          }
+        },
+        {
+          "name": "Get Freelancer By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/freelancers/{{freelancerId}}", "host": ["{{baseUrl}}"], "path": ["freelancers", "{{freelancerId}}"] }
+          }
+        },
+        {
+          "name": "Update Freelancer",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe Senior\",\n  \"email\": \"jane.senior@dev.com\",\n  \"skills\": \"Java 27, Spring Boot 4, React\",\n  \"hourlyRate\": 95.00\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/freelancers/{{freelancerId}}", "host": ["{{baseUrl}}"], "path": ["freelancers", "{{freelancerId}}"] }
+          }
+        },
+        {
+          "name": "Delete Freelancer",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/freelancers/{{freelancerId}}", "host": ["{{baseUrl}}"], "path": ["freelancers", "{{freelancerId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Create Project",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"E-Commerce Escrow Upgrade\",\n  \"description\": \"Milestone based freelance payment tracker\",\n  \"totalAmount\": 5000.00,\n  \"clientId\": 1,\n  \"freelancerId\": 1,\n  \"milestones\": [\n    {\n      \"title\": \"Phase 1: Architecture\",\n      \"description\": \"Setup Spring Boot Backend\",\n      \"amount\": 2000.00\n    },\n    {\n      \"title\": \"Phase 2: UI Implementation\",\n      \"description\": \"React Dashboard & APIs\",\n      \"amount\": 3000.00\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          }
+        },
+        {
+          "name": "Get All Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          }
+        },
+        {
+          "name": "Get Project By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
+          }
+        },
+        {
+          "name": "Get Project Escrow Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}/escrow", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}", "escrow"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Milestones",
+      "item": [
+        {
+          "name": "Deliver Milestone",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/milestones/{{milestoneId}}/deliver", "host": ["{{baseUrl}}"], "path": ["milestones", "{{milestoneId}}", "deliver"] }
+          }
+        },
+        {
+          "name": "Approve Milestone",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/milestones/{{milestoneId}}/approve", "host": ["{{baseUrl}}"], "path": ["milestones", "{{milestoneId}}", "approve"] }
+          }
+        },
+        {
+          "name": "Release Milestone Payment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/milestones/{{milestoneId}}/release", "host": ["{{baseUrl}}"], "path": ["milestones", "{{milestoneId}}", "release"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Releases",
+      "item": [
+        {
+          "name": "Get All Payment Releases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/releases", "host": ["{{baseUrl}}"], "path": ["releases"] }
+          }
+        }
+      ]
     }
   ]
 }

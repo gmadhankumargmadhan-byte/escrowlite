@@ -32,3 +32,8 @@ build/
 ### VS Code ###
 .vscode/
 escrowlite-source.zip
+
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+.env
