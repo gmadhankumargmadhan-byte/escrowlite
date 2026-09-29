@@ -4,6 +4,12 @@ export const healthApi = {
   getHealth: () => apiClient.get('/health'),
 };
 
+export const authApi = {
+  login: (data) => apiClient.post('/auth/login', data),
+  register: (data) => apiClient.post('/auth/register', data),
+  getMe: () => apiClient.get('/auth/me'),
+};
+
 export const clientApi = {
   getAll: () => apiClient.get('/clients'),
   getById: (id) => apiClient.get(`/clients/${id}`),
