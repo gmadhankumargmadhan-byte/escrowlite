@@ -1,11 +1,26 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  ShieldCheck, 
+  Eye, 
+  EyeOff, 
+  Lock, 
+  User, 
+  ArrowRight, 
+  CheckCircle2, 
+  AlertCircle,
+  Briefcase,
+  UserCheck,
+  Sparkles
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { ShieldCheck, Eye, EyeOff, Lock, User, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useTilt } from '../hooks/useTilt';
 
-export default function LoginPage() {
+export default function LoginPage({ onSwitchToRegister }) {
   const { login } = useAuth();
   const toast = useToast();
+  const { tiltStyle, glareStyle, handleMouseMove, handleMouseLeave } = useTilt(12);
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +60,10 @@ export default function LoginPage() {
 
   return (
     <div className="login-page-container">
-      {/* Left Brand Visual Side */}
+      {/* Dynamic Ambient Background Dots */}
+      <div className="ambient-grid-bg" />
+
+      {/* LEFT SIDE: Animated 2.5D Escrow Visualization */}
       <div className="login-left-brand">
         <div className="login-brand-content">
           <div className="login-brand-logo">
@@ -64,14 +82,50 @@ export default function LoginPage() {
             Enterprise freelance payment release tracker. Milestone-based escrow security connecting clients and developers transparently.
           </p>
 
+          {/* 2.5D Floating Interactive Escrow Visualization Card */}
+          <div 
+            className="login-2d-visual-card"
+            style={tiltStyle}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
+            <div style={glareStyle} />
+            
+            {/* SVG Connecting Flow Lines */}
+            <svg className="visual-card-svg" viewBox="0 0 400 160">
+              <path d="M 70 80 Q 200 20 330 80" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="2" strokeDasharray="4 4" className="animated-flow-dash" />
+            </svg>
+
+            {/* 3 Flow Nodes */}
+            <div className="visual-nodes-row">
+              <div className="visual-node client-node-mini">
+                <Briefcase size={16} />
+                <span>Client</span>
+              </div>
+
+              <motion.div 
+                className="visual-node vault-node-center"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <div className="vault-lock-ring">
+                  <Lock size={18} className="lock-icon" />
+                </div>
+                <div className="vault-amount-tag">$5,000 ESCROW</div>
+                <span className="vault-label">Protected</span>
+              </motion.div>
+
+              <div className="visual-node freelancer-node-mini">
+                <UserCheck size={16} />
+                <span>Freelancer</span>
+              </div>
+            </div>
+          </div>
+
           <div className="login-features-list">
             <div className="feature-item">
               <CheckCircle2 size={18} className="feature-icon" />
               <span>Milestone-based automated fund locking & releases</span>
-            </div>
-            <div className="feature-item">
-              <CheckCircle2 size={18} className="feature-icon" />
-              <span>Real-time delivery verification & client approvals</span>
             </div>
             <div className="feature-item">
               <CheckCircle2 size={18} className="feature-icon" />
@@ -85,9 +139,14 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Login Form Card Side */}
+      {/* RIGHT SIDE: Premium Login Form Card */}
       <div className="login-right-card-wrapper">
-        <div className="login-card">
+        <motion.div 
+          className="login-card spatial-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
           <div className="login-card-header">
             <h2>Welcome Back</h2>
             <p>Sign in to your protected EscrowLite workspace</p>
@@ -140,7 +199,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary btn-block login-btn" disabled={loading}>
+            <button type="submit" className="btn btn-primary btn-block login-btn glowing-btn" disabled={loading}>
               {loading ? (
                 'Authenticating...'
               ) : (
@@ -163,7 +222,15 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-        </div>
+
+          {/* Switch to Registration Link */}
+          <div className="auth-switch-footer">
+            <span>Don't have an account?</span>
+            <button type="button" className="auth-switch-link" onClick={onSwitchToRegister}>
+              Create account
+            </button>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

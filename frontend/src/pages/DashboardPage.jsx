@@ -1,287 +1,217 @@
-import React from 'react';
-import StatCard from '../components/ui/StatCard';
-import StatusBadge from '../components/ui/StatusBadge';
-import SkeletonLoader from '../components/ui/SkeletonLoader';
-import EmptyState from '../components/ui/EmptyState';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
+  Plus, 
+  Briefcase, 
   Users, 
   UserCheck, 
-  FolderKanban, 
-  DollarSign, 
+  Target, 
+  ShieldCheck, 
+  ArrowUpRight, 
+  Clock, 
   CheckCircle2, 
-  Lock, 
-  Plus, 
-  ArrowUpRight,
   TrendingUp,
-  Activity,
-  Zap,
-  Calendar
+  Sparkles,
+  ChevronRight,
+  Send,
+  DollarSign
 } from 'lucide-react';
+import EscrowVault2D from '../components/visualization/EscrowVault2D';
+import SkeletonLoader from '../components/ui/SkeletonLoader';
 import { useAuth } from '../context/AuthContext';
 
-export default function DashboardPage({ 
-  clients, 
-  freelancers, 
-  projects, 
-  milestones, 
-  releases, 
-  healthStatus, 
+export default function DashboardPage({
+  clients = [],
+  freelancers = [],
+  projects = [],
+  milestones = [],
+  releases = [],
+  healthStatus,
   loading,
   onNavigate,
   onOpenCreateProject,
   onOpenCreateClient,
-  onOpenCreateFreelancer 
+  onOpenCreateFreelancer,
 }) {
   const { user } = useAuth();
 
-  const totalBudget = projects.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
-  const totalReleased = releases.reduce((sum, r) => sum + (r.amount || 0), 0);
-  const remainingEscrow = totalBudget - totalReleased;
-  const pendingMilestones = milestones.filter((m) => m.status === 'PENDING' || m.status === 'DELIVERED').length;
+  // Financial Computations from Real API Data
+  const totalProjectBudget = projects.reduce((acc, p) => acc + (p.budget || 0), 0);
+  const releasedAmount = releases.reduce((acc, r) => acc + (r.amount || 0), 0);
+  const heldAmount = Math.max(0, totalProjectBudget - releasedAmount);
 
-  // Real Escrow Chart Calculation (Percentage of released vs held)
-  const releasedPercent = totalBudget > 0 ? Math.round((totalReleased / totalBudget) * 100) : 0;
-  const heldPercent = 100 - releasedPercent;
+  const pendingMilestones = milestones.filter(m => m.status === 'PENDING' || m.status === 'DELIVERED');
+  const activeProjects = projects.filter(p => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS');
 
-  if (loading && projects.length === 0) {
-    return <SkeletonLoader type="card" rows={6} />;
+  if (loading) {
+    return (
+      <div className="dashboard-spatial-layout">
+        <SkeletonLoader type="card" height={220} count={1} />
+        <SkeletonLoader type="card" height={340} count={1} />
+      </div>
+    );
   }
 
   return (
-    <div className="dashboard-page">
-      {/* Hero Greeting Section */}
-      <div className="dashboard-hero-card card">
-        <div className="hero-content">
-          <div>
-            <h1 className="hero-greeting">Good morning, {user?.name || 'Admin'} 👋</h1>
-            <p className="hero-subtitle">Here is what is happening across your EscrowLite freelance operations today.</p>
+    <div className="dashboard-spatial-layout">
+      {/* 1. Spatial Top Hero Greeting */}
+      <motion.div 
+        className="dashboard-hero-banner"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="hero-content-left">
+          <div className="hero-badge">
+            <Sparkles size={14} className="text-amber" />
+            <span>Escrow Core Active</span>
           </div>
-          <div className="hero-quick-actions">
-            <button className="btn btn-primary" onClick={onOpenCreateProject}>
-              <Plus size={16} /> Create Project
-            </button>
-            <button className="btn btn-secondary" onClick={onOpenCreateClient}>
-              <Plus size={16} /> Add Client
-            </button>
-            <button className="btn btn-secondary" onClick={onOpenCreateFreelancer}>
-              <Plus size={16} /> Add Freelancer
-            </button>
-            <button className="btn btn-secondary" onClick={() => onNavigate('milestones')}>
-              <Zap size={16} /> Review Milestones
-            </button>
-          </div>
-        </div>
-      </div>
+          <h1 className="hero-greeting">
+            Good day, <span className="gradient-text">{user?.name || user?.username || 'Escrow Administrator'}</span>
+          </h1>
+          <p className="hero-subtitle">
+            Your escrow operations are running seamlessly. {activeProjects.length} active project contracts currently secured.
+          </p>
 
-      {/* Metric Cards Grid */}
-      <div className="stats-grid">
-        <StatCard
-          title="Total Clients"
-          value={clients.length}
-          icon={Users}
-          color="primary"
-          subtext="Active contract partners"
-        />
-        <StatCard
-          title="Total Freelancers"
-          value={freelancers.length}
-          icon={UserCheck}
-          color="primary"
-          subtext="Verified developers"
-        />
-        <StatCard
-          title="Total Projects"
-          value={projects.length}
-          icon={FolderKanban}
-          color="primary"
-          subtext="Active project workspaces"
-        />
-        <StatCard
-          title="Total Escrow Budget"
-          value={`$${totalBudget.toLocaleString()}`}
-          icon={DollarSign}
-          color="primary"
-          subtext="Gross contract value"
-        />
-        <StatCard
-          title="Released Payments"
-          value={`$${totalReleased.toLocaleString()}`}
-          icon={CheckCircle2}
-          color="success"
-          subtext={`${releasedPercent}% disbursed`}
-        />
-        <StatCard
-          title="Held in Escrow"
-          value={`$${remainingEscrow.toLocaleString()}`}
-          icon={Lock}
-          color="warning"
-          subtext={`${heldPercent}% protected balance`}
-        />
-      </div>
-
-      {/* Real Visualizations & Charts Grid */}
-      <div className="grid-2 mb-4">
-        {/* Escrow Distribution Chart */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h2 className="card-title">Escrow Capital Breakdown</h2>
-              <p className="card-subtitle">Real-time allocation of disbursed vs protected funds</p>
+          <div className="hero-quick-pills">
+            <div className="quick-pill">
+              <Users size={14} /> <span>{clients.length} Clients</span>
             </div>
-            <TrendingUp size={20} className="text-muted" />
-          </div>
-
-          <div className="chart-wrapper">
-            <div className="chart-bar-container">
-              <div 
-                className="chart-bar-fill success" 
-                style={{ width: `${releasedPercent}%` }} 
-                title={`Released: ${releasedPercent}%`}
-              />
-              <div 
-                className="chart-bar-fill warning" 
-                style={{ width: `${heldPercent}%` }} 
-                title={`Held: ${heldPercent}%`}
-              />
+            <div className="quick-pill">
+              <UserCheck size={14} /> <span>{freelancers.length} Freelancers</span>
             </div>
-            <div className="chart-legend mt-3">
-              <div className="legend-item">
-                <span className="legend-dot success" />
-                <span>Released Payments (${totalReleased.toLocaleString()})</span>
-                <strong className="ml-auto">{releasedPercent}%</strong>
-              </div>
-              <div className="legend-item mt-2">
-                <span className="legend-dot warning" />
-                <span>Protected in Escrow (${remainingEscrow.toLocaleString()})</span>
-                <strong className="ml-auto">{heldPercent}%</strong>
-              </div>
+            <div className="quick-pill">
+              <Briefcase size={14} /> <span>{projects.length} Total Projects</span>
             </div>
           </div>
         </div>
 
-        {/* Milestone Distribution Overview */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h2 className="card-title">Milestone Status Distribution</h2>
-              <p className="card-subtitle">Breakdown of deliverables across project lifecycle</p>
-            </div>
-            <Activity size={20} className="text-muted" />
-          </div>
-
-          <div className="milestone-distribution-grid">
-            <div className="dist-box">
-              <span className="dist-num">{milestones.filter(m => m.status === 'PENDING').length}</span>
-              <span className="dist-label">Pending</span>
-            </div>
-            <div className="dist-box">
-              <span className="dist-num">{milestones.filter(m => m.status === 'DELIVERED').length}</span>
-              <span className="dist-label">Delivered</span>
-            </div>
-            <div className="dist-box">
-              <span className="dist-num">{milestones.filter(m => m.status === 'APPROVED').length}</span>
-              <span className="dist-label">Approved</span>
-            </div>
-            <div className="dist-box">
-              <span className="dist-num">{milestones.filter(m => m.status === 'RELEASED').length}</span>
-              <span className="dist-label">Released</span>
-            </div>
-          </div>
+        <div className="hero-actions-right">
+          <button 
+            className="btn btn-primary glowing-btn flex-align-center gap-2"
+            onClick={onOpenCreateProject}
+          >
+            <Plus size={16} /> New Project Contract
+          </button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Recent Activity Log & Projects Grid */}
-      <div className="grid-2">
-        {/* Recent Projects Card */}
-        <div className="card">
-          <div className="card-header">
+      {/* 2. Reimagined Central 2.5D Escrow Vault Visualization */}
+      <EscrowVault2D
+        totalAmount={totalProjectBudget}
+        heldAmount={heldAmount}
+        releasedAmount={releasedAmount}
+        activeProjectsCount={activeProjects.length}
+      />
+
+      {/* 3. Connected Workflow Composition Section */}
+      <div className="spatial-grid-2col">
+        {/* Left Surface: Active Contracts Workspace */}
+        <motion.div 
+          className="spatial-surface-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <div className="surface-header">
             <div>
-              <h2 className="card-title">Active Projects Workspace</h2>
-              <p className="card-subtitle">Recent contracts with live milestone tracking</p>
+              <span className="surface-tag">Live Workspaces</span>
+              <h3>Active Project Contracts ({projects.length})</h3>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('projects')}>
-              View All <ArrowUpRight size={14} />
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={() => onNavigate('projects')}
+            >
+              View All <ChevronRight size={14} />
             </button>
           </div>
 
-          <div className="table-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Budget</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.slice(0, 5).map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <div className="font-weight-600">{p.title}</div>
-                    </td>
-                    <td>${p.totalAmount?.toLocaleString()}</td>
-                    <td><StatusBadge status={p.status} /></td>
-                    <td>
-                      <button 
-                        className="btn btn-secondary btn-sm" 
-                        onClick={() => onNavigate('project-detail', p.id)}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {projects.length === 0 && (
-                  <tr>
-                    <td colSpan="4">
-                      <EmptyState 
-                        title="No Projects Yet" 
-                        message="Create a project to start tracking escrow milestones."
-                        actionLabel="Create Project"
-                        onAction={onOpenCreateProject}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Payment Release Activity Log */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <h2 className="card-title">Recent Escrow Releases</h2>
-              <p className="card-subtitle">Verified transaction activity log</p>
+          {projects.length === 0 ? (
+            <div className="empty-surface-note">
+              No active project contracts available. Click "New Project Contract" to initiate.
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('escrow')}>
-              Ledger <ArrowUpRight size={14} />
-            </button>
-          </div>
+          ) : (
+            <div className="spatial-projects-list">
+              {projects.slice(0, 4).map((proj) => {
+                const clientObj = clients.find(c => c.id === (proj.client?.id || proj.clientId));
+                const freeObj = freelancers.find(f => f.id === (proj.freelancer?.id || proj.freelancerId));
 
-          <div className="activity-timeline">
-            {releases.slice(0, 5).map((r) => (
-              <div key={r.id} className="activity-item">
-                <div className="activity-icon success">
-                  <CheckCircle2 size={16} />
-                </div>
-                <div className="activity-details">
-                  <div className="activity-title">
-                    Released <strong>${r.amount?.toLocaleString()}</strong> for Milestone #{r.milestone?.id || r.milestoneId}
+                return (
+                  <div 
+                    key={proj.id} 
+                    className="spatial-project-row"
+                    onClick={() => onNavigate('project-detail', proj.id)}
+                  >
+                    <div className="row-left font-weight-600">
+                      <div className="project-title-text">{proj.title}</div>
+                      <div className="project-party-tags">
+                        <span>Client: {clientObj?.name || 'Assigned'}</span>
+                        <span className="divider">•</span>
+                        <span>Freelancer: {freeObj?.name || 'Assigned'}</span>
+                      </div>
+                    </div>
+
+                    <div className="row-right">
+                      <span className="row-price">${proj.budget?.toLocaleString()}</span>
+                      <span className={`status-pill status-${proj.status?.toLowerCase()}`}>
+                        {proj.status}
+                      </span>
+                    </div>
                   </div>
-                  <div className="activity-sub text-muted text-xs">
-                    <Calendar size={12} /> {r.releasedAt ? new Date(r.releasedAt).toLocaleString() : 'Recent'}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {releases.length === 0 && (
-              <EmptyState title="No Releases Yet" message="Released milestone funds will appear here in real time." />
-            )}
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Right Surface: Milestone Queue Stream */}
+        <motion.div 
+          className="spatial-surface-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <div className="surface-header">
+            <div>
+              <span className="surface-tag">Delivery Queue</span>
+              <h3>Pending Milestones ({pendingMilestones.length})</h3>
+            </div>
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={() => onNavigate('milestones')}
+            >
+              Tracker <ChevronRight size={14} />
+            </button>
           </div>
-        </div>
+
+          {pendingMilestones.length === 0 ? (
+            <div className="empty-surface-note">
+              All milestones are delivered or approved!
+            </div>
+          ) : (
+            <div className="spatial-milestones-stream">
+              {pendingMilestones.slice(0, 4).map((m) => (
+                <div key={m.id} className="stream-item">
+                  <div className="stream-icon-badge">
+                    {m.status === 'DELIVERED' ? <Send size={16} className="text-amber" /> : <Clock size={16} className="text-indigo" />}
+                  </div>
+                  <div className="stream-content">
+                    <div className="stream-title">{m.title}</div>
+                    <div className="stream-subtext">
+                      Amount: ${m.amount?.toLocaleString()} • Status: {m.status}
+                    </div>
+                  </div>
+                  <button 
+                    className="btn btn-secondary btn-xs"
+                    onClick={() => onNavigate('milestones')}
+                  >
+                    Review
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
       </div>
     </div>
   );

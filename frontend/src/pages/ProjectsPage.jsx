@@ -1,298 +1,249 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, Search, Briefcase, DollarSign, ChevronRight, UserCheck, Users, ShieldCheck } from 'lucide-react';
 import Modal from '../components/ui/Modal';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import StatusBadge from '../components/ui/StatusBadge';
-import EmptyState from '../components/ui/EmptyState';
-import SkeletonLoader from '../components/ui/SkeletonLoader';
-import { Plus, Trash2, Eye, FolderKanban, Calendar, DollarSign, User, UserCheck } from 'lucide-react';
-import { useToast } from '../context/ToastContext';
 import { projectApi } from '../api/escrowApi';
+import { useToast } from '../context/ToastContext';
+import { useTilt } from '../hooks/useTilt';
+
+function SpatialProjectCard({ project, client, freelancer, onNavigate }) {
+  const { tiltStyle, glareStyle, handleMouseMove, handleMouseLeave } = useTilt(8);
+  const formattedBudget = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(project.budget || 0);
+
+  return (
+    <div 
+      className="spatial-project-surface"
+      style={tiltStyle}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => onNavigate('project-detail', project.id)}
+    >
+      <div style={glareStyle} />
+      
+      <div className="surface-top-bar">
+        <span className={`status-pill status-${project.status?.toLowerCase()}`}>
+          {project.status || 'ACTIVE'}
+        </span>
+        <span className="surface-price font-emerald">{formattedBudget}</span>
+      </div>
+
+      <h3 className="project-surface-title">{project.title}</h3>
+      {project.description && (
+        <p className="project-surface-desc">{project.description}</p>
+      )}
+
+      {/* Connected Parties Chips */}
+      <div className="parties-chips-row">
+        <div className="party-chip">
+          <Users size={13} />
+          <span>Client: {client?.name || 'Unassigned'}</span>
+        </div>
+        <div className="party-chip">
+          <UserCheck size={13} />
+          <span>Freelancer: {freelancer?.name || 'Unassigned'}</span>
+        </div>
+      </div>
+
+      <div className="surface-footer-bar">
+        <span className="open-workspace-btn">
+          Open Workspace <ChevronRight size={14} />
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function ProjectsPage({ 
-  projects, 
-  clients, 
-  freelancers, 
+  projects = [], 
+  clients = [], 
+  freelancers = [], 
   loading, 
   onRefresh, 
-  searchTerm, 
+  searchTerm: globalSearch, 
   onNavigate 
 }) {
   const toast = useToast();
-  const [showModal, setShowModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [form, setProjectForm] = useState({
-    title: '',
-    description: '',
-    totalAmount: '',
-    clientId: '',
-    freelancerId: '',
-  });
+  const [localSearch, setLocalSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // New Project Form State
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [budget, setBudget] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [freelancerId, setFreelancerId] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Confirm Delete
-  const [deletingId, setDeletingId] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const query = (localSearch || globalSearch || '').toLowerCase();
+  const filtered = projects.filter(p => 
+    p.title?.toLowerCase().includes(query) || 
+    p.description?.toLowerCase().includes(query)
+  );
 
-  const filteredProjects = projects.filter((p) => {
-    const matchesSearch = !searchTerm || (
-      p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const matchesStatus = statusFilter === 'ALL' || p.status?.toUpperCase() === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const handleOpenCreate = () => {
-    setProjectForm({ title: '', description: '', totalAmount: '', clientId: '', freelancerId: '' });
-    setShowModal(true);
-  };
-
-  const handleSubmit = async (e) => {
+  const handleCreateProject = async (e) => {
     e.preventDefault();
+    if (!title || !budget) {
+      toast.error('Title and budget are required');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
-        title: form.title,
-        description: form.description,
-        totalAmount: parseFloat(form.totalAmount),
-        clientId: parseInt(form.clientId),
-        freelancerId: parseInt(form.freelancerId),
-        milestones: [],
+        title,
+        description,
+        budget: parseFloat(budget),
+        status: 'ACTIVE',
+        clientId: clientId ? parseInt(clientId) : null,
+        freelancerId: freelancerId ? parseInt(freelancerId) : null,
       };
+
       await projectApi.create(payload);
-      toast.success(`Project "${form.title}" created successfully.`);
-      setShowModal(false);
-      onRefresh();
+      toast.success('Project contract initiated successfully!');
+      setIsModalOpen(false);
+      setTitle('');
+      setDescription('');
+      setBudget('');
+      setClientId('');
+      setFreelancerId('');
+      if (onRefresh) onRefresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create project');
+      toast.error(err.message || 'Failed to create project contract');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deletingId) return;
-    setDeleting(true);
-    try {
-      await projectApi.delete(deletingId);
-      toast.success('Project deleted successfully.');
-      setDeletingId(null);
-      onRefresh();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete project');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   return (
-    <div className="projects-page">
-      <div className="card">
-        <div className="card-header">
-          <div>
-            <h2 className="card-title">Project Workspace</h2>
-            <p className="card-subtitle">Manage freelance projects, assignments, and budgets</p>
+    <div className="directory-page-layout">
+      {/* Page Header */}
+      <div className="directory-header-bar">
+        <div>
+          <span className="surface-tag">Workspaces</span>
+          <h2>Project Escrow Contracts</h2>
+        </div>
+
+        <div className="header-actions-group">
+          <div className="directory-search-input">
+            <Search size={16} />
+            <input 
+              type="text" 
+              placeholder="Search contracts by title, description..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+            />
           </div>
-          <button className="btn btn-primary" onClick={handleOpenCreate}>
-            <Plus size={16} /> Create Project
+
+          <button className="btn btn-primary glowing-btn" onClick={() => setIsModalOpen(true)}>
+            <Plus size={16} /> Initiate Project Contract
           </button>
-        </div>
-
-        {/* Status Filter Tabs */}
-        <div className="filter-bar">
-          {['ALL', 'CREATED', 'IN_PROGRESS', 'COMPLETED'].map((st) => (
-            <button
-              key={st}
-              className={`filter-chip ${statusFilter === st ? 'active' : ''}`}
-              onClick={() => setStatusFilter(st)}
-            >
-              {st.replace('_', ' ')}
-            </button>
-          ))}
-        </div>
-
-        <div className="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Project Title & Description</th>
-                <th>Escrow Budget</th>
-                <th>Client</th>
-                <th>Freelancer</th>
-                <th>Status</th>
-                <th>Created Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            {loading && projects.length === 0 ? (
-              <SkeletonLoader type="table" rows={5} cols={8} />
-            ) : (
-              <tbody>
-                {filteredProjects.map((p) => {
-                  const client = clients.find((c) => c.id === p.clientId);
-                  const freelancer = freelancers.find((f) => f.id === p.freelancerId);
-
-                  return (
-                    <tr key={p.id}>
-                      <td>#{p.id}</td>
-                      <td>
-                        <div className="font-weight-600">{p.title}</div>
-                        <div className="text-muted text-xs">{p.description || 'No description'}</div>
-                      </td>
-                      <td>
-                        <div className="font-weight-600 color-success">
-                          ${p.totalAmount?.toLocaleString()}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="table-cell-icon">
-                          <User size={14} className="text-muted" />
-                          {client ? client.name : `Client #${p.clientId}`}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="table-cell-icon">
-                          <UserCheck size={14} className="text-muted" />
-                          {freelancer ? freelancer.name : `Freelancer #${p.freelancerId}`}
-                        </div>
-                      </td>
-                      <td><StatusBadge status={p.status} /></td>
-                      <td>
-                        <div className="table-cell-icon text-muted text-xs">
-                          <Calendar size={13} />
-                          {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'N/A'}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => onNavigate('project-detail', p.id)}
-                            title="View Project Details"
-                          >
-                            <Eye size={14} /> View
-                          </button>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => setDeletingId(p.id)}
-                            title="Delete Project"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filteredProjects.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan="8">
-                      <EmptyState
-                        icon={FolderKanban}
-                        title="No Projects Found"
-                        message="Create a new milestone project to get started."
-                        actionLabel="Create Project"
-                        onAction={handleOpenCreate}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            )}
-          </table>
         </div>
       </div>
 
-      {/* Create Project Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Create New Project">
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Project Title <span className="text-danger">*</span></label>
-            <input
-              className="form-control"
+      {/* Projects Spatial Grid */}
+      {filtered.length === 0 ? (
+        <div className="empty-surface-note text-center py-5">
+          No project contracts match your search filter.
+        </div>
+      ) : (
+        <div className="projects-spatial-grid">
+          {filtered.map(proj => {
+            const clientObj = clients.find(c => c.id === (proj.client?.id || proj.clientId));
+            const freeObj = freelancers.find(f => f.id === (proj.freelancer?.id || proj.freelancerId));
+
+            return (
+              <SpatialProjectCard
+                key={proj.id}
+                project={proj}
+                client={clientObj}
+                freelancer={freeObj}
+                onNavigate={onNavigate}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Initiate Project Modal */}
+      <Modal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Initiate New Project Contract"
+      >
+        <form onSubmit={handleCreateProject}>
+          <div className="form-group mb-3">
+            <label>Project Title *</label>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="e.g. Mobile App MVP Development"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               required
-              placeholder="e.g. E-Commerce Payment Gateway Integration"
-              value={form.title}
-              onChange={(e) => setProjectForm({ ...form, title: e.target.value })}
             />
           </div>
-          <div className="form-group">
-            <label>Description</label>
-            <textarea
-              className="form-control"
-              rows="3"
-              placeholder="Brief description of contract scope and deliverables..."
-              value={form.description}
-              onChange={(e) => setProjectForm({ ...form, description: e.target.value })}
+
+          <div className="form-group mb-3">
+            <label>Contract Budget ($ USD) *</label>
+            <input 
+              type="number" 
+              className="form-control" 
+              placeholder="5000"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              required
             />
           </div>
-          <div className="form-group">
-            <label>Total Escrow Budget ($) <span className="text-danger">*</span></label>
-            <input
-              type="number"
+
+          <div className="form-group mb-3">
+            <label>Select Client</label>
+            <select 
               className="form-control"
-              required
-              placeholder="5000.00"
-              value={form.totalAmount}
-              onChange={(e) => setProjectForm({ ...form, totalAmount: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Select Client <span className="text-danger">*</span></label>
-            <select
-              className="form-control"
-              required
-              value={form.clientId}
-              onChange={(e) => setProjectForm({ ...form, clientId: e.target.value })}
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
             >
               <option value="">-- Choose Client --</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} (#{c.id})
-                </option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.name} ({c.company || c.email})</option>
               ))}
             </select>
           </div>
-          <div className="form-group">
-            <label>Assign Freelancer <span className="text-danger">*</span></label>
-            <select
+
+          <div className="form-group mb-3">
+            <label>Assign Freelancer</label>
+            <select 
               className="form-control"
-              required
-              value={form.freelancerId}
-              onChange={(e) => setProjectForm({ ...form, freelancerId: e.target.value })}
+              value={freelancerId}
+              onChange={(e) => setFreelancerId(e.target.value)}
             >
               <option value="">-- Choose Freelancer --</option>
-              {freelancers.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} (#{f.id})
-                </option>
+              {freelancers.map(f => (
+                <option key={f.id} value={f.id}>{f.name} ({f.skills || f.email})</option>
               ))}
             </select>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={saving}>
+
+          <div className="form-group mb-4">
+            <label>Scope & Requirements Description</label>
+            <textarea 
+              className="form-control" 
+              rows={3}
+              placeholder="Briefly describe project scope and milestone breakdown..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="modal-actions-row">
+            <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Creating...' : 'Create Project'}
+            <button type="submit" className="btn btn-primary glowing-btn" disabled={saving}>
+              {saving ? 'Initiating...' : 'Lock Escrow & Create Contract'}
             </button>
           </div>
         </form>
       </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={!!deletingId}
-        onClose={() => setDeletingId(null)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Project"
-        message="Are you sure you want to delete this project? All associated milestones and escrow data will be permanently deleted."
-        confirmText="Delete Project"
-        isDanger={true}
-        loading={deleting}
-      />
     </div>
   );
 }

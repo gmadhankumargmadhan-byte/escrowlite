@@ -1,214 +1,213 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, Search, Mail, Phone, Building, Briefcase, ChevronRight, User } from 'lucide-react';
+import ClientDrawer from '../components/ui/ClientDrawer';
 import Modal from '../components/ui/Modal';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import EmptyState from '../components/ui/EmptyState';
-import SkeletonLoader from '../components/ui/SkeletonLoader';
-import { Plus, Trash2, Edit2, Mail, Phone, Users } from 'lucide-react';
-import { useToast } from '../context/ToastContext';
 import { clientApi } from '../api/escrowApi';
+import { useToast } from '../context/ToastContext';
+import { useTilt } from '../hooks/useTilt';
 
-export default function ClientsPage({ clients, loading, onRefresh, searchTerm }) {
+function ClientCard({ client, projects, onOpenDrawer }) {
+  const { tiltStyle, glareStyle, handleMouseMove, handleMouseLeave } = useTilt(8);
+  const clientProjects = projects.filter(p => p.client?.id === client.id || p.clientId === client.id);
+
+  return (
+    <div 
+      className="spatial-directory-card"
+      style={tiltStyle}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => onOpenDrawer(client)}
+    >
+      <div style={glareStyle} />
+      
+      <div className="card-top-row">
+        <div className="avatar-circle client-avatar">
+          {client.name ? client.name.charAt(0).toUpperCase() : 'C'}
+        </div>
+        <span className="badge badge-indigo">{clientProjects.length} Projects</span>
+      </div>
+
+      <h4 className="card-name-title">{client.name}</h4>
+
+      <div className="card-details-stack">
+        <div className="detail-line">
+          <Mail size={14} /> <span>{client.email || 'No email specified'}</span>
+        </div>
+        {client.company && (
+          <div className="detail-line">
+            <Building size={14} /> <span>{client.company}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="card-footer-action">
+        <span>View Full Portfolio</span>
+        <ChevronRight size={14} />
+      </div>
+    </div>
+  );
+}
+
+export default function ClientsPage({ clients = [], projects = [], loading, onRefresh, searchTerm: globalSearch, onNavigate }) {
   const toast = useToast();
-  const [showModal, setShowModal] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [localSearch, setLocalSearch] = useState('');
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // New Client Form State
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [company, setCompany] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Confirm Delete
-  const [deletingId, setDeletingId] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const query = (localSearch || globalSearch || '').toLowerCase();
+  const filteredClients = clients.filter(c => 
+    c.name?.toLowerCase().includes(query) || 
+    c.email?.toLowerCase().includes(query) ||
+    c.company?.toLowerCase().includes(query)
+  );
 
-  const filteredClients = clients.filter((c) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      c.name?.toLowerCase().includes(term) ||
-      c.email?.toLowerCase().includes(term) ||
-      c.phone?.toLowerCase().includes(term)
-    );
-  });
-
-  const handleOpenCreate = () => {
-    setEditingClient(null);
-    setForm({ name: '', email: '', phone: '' });
-    setShowModal(true);
-  };
-
-  const handleOpenEdit = (c) => {
-    setEditingClient(c);
-    setForm({ name: c.name || '', email: c.email || '', phone: c.phone || '' });
-    setShowModal(true);
-  };
-
-  const handleSubmit = async (e) => {
+  const handleCreateClient = async (e) => {
     e.preventDefault();
+    if (!name || !email) {
+      toast.error('Name and email are required');
+      return;
+    }
+
     setSaving(true);
     try {
-      if (editingClient) {
-        await clientApi.update(editingClient.id, form);
-        toast.success(`Client "${form.name}" updated successfully.`);
-      } else {
-        await clientApi.create(form);
-        toast.success(`Client "${form.name}" created successfully.`);
-      }
-      setShowModal(false);
-      onRefresh();
+      await clientApi.create({ name, email, phone, company });
+      toast.success('Client registered successfully!');
+      setIsModalOpen(false);
+      setName('');
+      setEmail('');
+      setPhone('');
+      setCompany('');
+      if (onRefresh) onRefresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save client');
+      toast.error(err.message || 'Failed to create client');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deletingId) return;
-    setDeleting(true);
-    try {
-      await clientApi.delete(deletingId);
-      toast.success('Client deleted successfully.');
-      setDeletingId(null);
-      onRefresh();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete client');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   return (
-    <div className="clients-page">
-      <div className="card">
-        <div className="card-header">
-          <div>
-            <h2 className="card-title">Client Registry</h2>
-            <p className="card-subtitle">Manage project clients and contact details</p>
-          </div>
-          <button className="btn btn-primary" onClick={handleOpenCreate}>
-            <Plus size={16} /> Add Client
-          </button>
+    <div className="directory-page-layout">
+      {/* Header Bar */}
+      <div className="directory-header-bar">
+        <div>
+          <span className="surface-tag">Directory</span>
+          <h2>Client Organizations</h2>
         </div>
 
-        <div className="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Client Name</th>
-                <th>Email Address</th>
-                <th>Phone Number</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            {loading && clients.length === 0 ? (
-              <SkeletonLoader type="table" rows={5} cols={5} />
-            ) : (
-              <tbody>
-                {filteredClients.map((c) => (
-                  <tr key={c.id}>
-                    <td>#{c.id}</td>
-                    <td>
-                      <div className="font-weight-600">{c.name}</div>
-                    </td>
-                    <td>
-                      <div className="table-cell-icon">
-                        <Mail size={14} className="text-muted" /> {c.email}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="table-cell-icon">
-                        <Phone size={14} className="text-muted" /> {c.phone || 'N/A'}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleOpenEdit(c)}>
-                          <Edit2 size={14} /> Edit
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => setDeletingId(c.id)}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredClients.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan="5">
-                      <EmptyState
-                        icon={Users}
-                        title="No Clients Found"
-                        message="Get started by adding your first project client."
-                        actionLabel="Add Client"
-                        onAction={handleOpenCreate}
-                      />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            )}
-          </table>
+        <div className="header-actions-group">
+          <div className="directory-search-input">
+            <Search size={16} />
+            <input 
+              type="text" 
+              placeholder="Search clients by name, email, company..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+            />
+          </div>
+
+          <button className="btn btn-primary glowing-btn" onClick={() => setIsModalOpen(true)}>
+            <Plus size={16} /> Register Client
+          </button>
         </div>
       </div>
 
-      {/* Add / Edit Client Modal */}
+      {/* Directory Grid */}
+      {filteredClients.length === 0 ? (
+        <div className="empty-surface-note text-center py-5">
+          No client records match your search query.
+        </div>
+      ) : (
+        <div className="directory-cards-grid">
+          {filteredClients.map(client => (
+            <ClientCard 
+              key={client.id} 
+              client={client} 
+              projects={projects}
+              onOpenDrawer={(c) => setSelectedClient(c)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Client Detail Side Drawer */}
+      <ClientDrawer 
+        client={selectedClient}
+        projects={projects}
+        onClose={() => setSelectedClient(null)}
+        onNavigateToProject={onNavigate}
+      />
+
+      {/* Register Client Modal */}
       <Modal 
-        isOpen={showModal} 
-        onClose={() => setShowModal(false)} 
-        title={editingClient ? 'Edit Client' : 'Add New Client'}
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        title="Register New Client"
       >
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Client Name <span className="text-danger">*</span></label>
+        <form onSubmit={handleCreateClient}>
+          <div className="form-group mb-3">
+            <label>Full Name *</label>
             <input 
+              type="text" 
               className="form-control" 
-              required 
-              placeholder="e.g. Acme Corporation"
-              value={form.name} 
-              onChange={(e) => setForm({ ...form, name: e.target.value })} 
+              placeholder="e.g. Sarah Jenkins"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
             />
           </div>
-          <div className="form-group">
-            <label>Email Address <span className="text-danger">*</span></label>
+
+          <div className="form-group mb-3">
+            <label>Email Address *</label>
             <input 
               type="email" 
               className="form-control" 
-              required 
-              placeholder="client@acme.com"
-              value={form.email} 
-              onChange={(e) => setForm({ ...form, email: e.target.value })} 
+              placeholder="sarah@acme.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </div>
-          <div className="form-group">
+
+          <div className="form-group mb-3">
+            <label>Company / Organization</label>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="Acme Corp"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group mb-4">
             <label>Phone Number</label>
             <input 
+              type="text" 
               className="form-control" 
               placeholder="+1 (555) 019-2834"
-              value={form.phone} 
-              onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={saving}>
+
+          <div className="modal-actions-row">
+            <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : editingClient ? 'Update Client' : 'Create Client'}
+            <button type="submit" className="btn btn-primary glowing-btn" disabled={saving}>
+              {saving ? 'Saving...' : 'Register Client'}
             </button>
           </div>
         </form>
       </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={!!deletingId}
-        onClose={() => setDeletingId(null)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Client"
-        message="Are you sure you want to delete this client? Associated projects may be affected."
-        confirmText="Delete"
-        isDanger={true}
-        loading={deleting}
-      />
     </div>
   );
 }

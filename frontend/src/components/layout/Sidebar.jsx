@@ -1,33 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Users, 
   UserCheck, 
-  FolderKanban, 
+  Briefcase, 
   Target, 
   ShieldCheck, 
   Activity, 
-  DollarSign, 
-  Settings,
-  LogOut,
-  Sun,
-  Moon,
-  X 
+  Settings, 
+  LogOut, 
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 
 export default function Sidebar({ activeTab, setActiveTab, isOpen, onClose }) {
-  const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { logout, user } = useAuth();
+  const [isHovered, setIsHovered] = useState(false);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'freelancers', label: 'Freelancers', icon: UserCheck },
-    { id: 'projects', label: 'Projects', icon: FolderKanban },
+    { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'milestones', label: 'Milestones', icon: Target },
-    { id: 'escrow', label: 'Escrow & Releases', icon: DollarSign },
+    { id: 'escrow', label: 'Escrow Vault', icon: ShieldCheck },
     { id: 'status', label: 'System Status', icon: Activity },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -35,70 +33,82 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, onClose }) {
   return (
     <>
       {/* Mobile Backdrop Overlay */}
-      {isOpen && <div className="sidebar-backdrop" onClick={onClose} />}
+      {isOpen && (
+        <div className="sidebar-mobile-backdrop" onClick={onClose} />
+      )}
 
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-        <div>
-          <div className="brand">
-            <div className="brand-icon">
-              <ShieldCheck size={22} color="#fff" />
-            </div>
-            <div className="brand-text-container">
-              <span className="brand-name">EscrowLite</span>
-              <span className="brand-tagline">FinTech Escrow</span>
-            </div>
-            <button className="sidebar-close-btn" onClick={onClose}>
-              <X size={18} />
-            </button>
+      <motion.aside 
+        className={`spatial-nav-rail ${isOpen ? 'mobile-open' : ''} ${isHovered ? 'rail-expanded' : ''}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Brand Logo & Header */}
+        <div className="rail-brand-header">
+          <div className="rail-brand-icon">
+            <ShieldCheck size={24} color="#fff" />
           </div>
-
-          <nav className="sidebar-nav">
-            <ul className="nav-list">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <li key={item.id}>
-                    <button
-                      className={`nav-item ${isActive ? 'active' : ''}`}
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        if (onClose) onClose();
-                      }}
-                    >
-                      <Icon size={18} className="nav-icon" />
-                      <span>{item.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        </div>
-
-        {/* Sidebar Footer with User Profile, Theme Switcher & Logout */}
-        <div className="sidebar-footer">
-          <div className="sidebar-theme-toggle mb-3">
-            <button className="theme-switch-btn" onClick={toggleTheme}>
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-            </button>
-          </div>
-
-          <div className="sidebar-user-card">
-            <div className="user-avatar-circle">
-              {user?.name ? user.name.substring(0, 2).toUpperCase() : 'US'}
-            </div>
-            <div className="user-details">
-              <span className="user-name">{user?.name || user?.username || 'User'}</span>
-              <span className="user-role">{user?.role || 'Administrator'}</span>
-            </div>
-            <button className="logout-btn" onClick={logout} title="Sign Out">
-              <LogOut size={16} />
-            </button>
+          <div className="rail-brand-text">
+            <span className="brand-name">EscrowLite</span>
+            <span className="brand-tag">2.5D SAAS</span>
           </div>
         </div>
-      </aside>
+
+        {/* Navigation Rail Links */}
+        <nav className="rail-nav-menu">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+
+            return (
+              <button
+                key={item.id}
+                className={`rail-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (onClose) onClose();
+                }}
+              >
+                {/* Active Indicator Pillar */}
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeRailIndicator"
+                    className="rail-active-pillar"
+                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  />
+                )}
+
+                <div className="rail-icon-wrapper">
+                  <Icon size={20} />
+                </div>
+
+                <span className="rail-label-text">{item.label}</span>
+
+                {isActive && <ChevronRight size={14} className="rail-active-arrow" />}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* User Account / Logout Action */}
+        <div className="rail-user-footer">
+          <div className="user-avatar-mini" title={user?.name || user?.username || 'User'}>
+            {(user?.name || user?.username || 'A').charAt(0).toUpperCase()}
+          </div>
+          
+          <div className="user-details-mini">
+            <span className="user-name-text">{user?.name || user?.username || 'Admin'}</span>
+            <span className="user-role-text">{user?.role || 'ROLE_CLIENT'}</span>
+          </div>
+
+          <button 
+            className="rail-logout-btn" 
+            onClick={logout} 
+            title="Sign out of workspace"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
+      </motion.aside>
     </>
   );
 }

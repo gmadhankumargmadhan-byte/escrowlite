@@ -29,8 +29,11 @@ import {
 } from './api/escrowApi';
 import './App.css';
 
+import RegisterPage from './pages/RegisterPage';
+
 function MainAppShell() {
   const { isAuthenticated } = useAuth();
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState(null);
@@ -88,9 +91,13 @@ function MainAppShell() {
     }
   };
 
-  // If not authenticated, render the Premium Split Login Page
+  // If not authenticated, render the Login or Register Page
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return isRegistering ? (
+      <RegisterPage onSwitchToLogin={() => setIsRegistering(false)} />
+    ) : (
+      <LoginPage onSwitchToRegister={() => setIsRegistering(true)} />
+    );
   }
 
   return (
@@ -174,6 +181,8 @@ function MainAppShell() {
             <MilestonesPage
               milestones={milestones}
               projects={projects}
+              clients={clients}
+              freelancers={freelancers}
               loading={loading}
               onRefresh={loadAllData}
               searchTerm={searchTerm}
